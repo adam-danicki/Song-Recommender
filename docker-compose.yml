@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: songrec_db
+    environment:
+      POSTGRES_USER: songrec
+      POSTGRES_PASSWORD: songrec_pw
+      POSTGRES_DB: songrec
+    ports:
+      - "5432:5432"
+    volumes:
+      - songrec_pgdata:/var/lib/postgresql/data
+
+volumes:
+  songrec_pgdata:

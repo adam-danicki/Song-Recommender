@@ -1,0 +1,10 @@
+CREATE TABLE if NOT EXISTS SONGS (
+    track_id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    artist TEXT NOT NULL,
+    genre TEXT,
+);
+
+CREATE TABLE if NOT EXISTS SONG_FEATURES (
+
+);
