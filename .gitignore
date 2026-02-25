@@ -12,4 +12,5 @@ data/msd/
 *.zip
 
 # generated artifacts
-models/
+models/*
+!models/.gitkeep
