@@ -6,7 +6,7 @@ Song Recommender is a FastAPI + PostgreSQL backend for searching a song catalog 
 
 It uses the Million Song Dataset to build a content based recommender with feature scaling, optional PCA embeddings, and cosine similarity kNN retrieval. The system is designed for fast local development with Docker and reproducible ML artifacts saved to disk.
 
-----------------------------------------------------------------------------------------
+
 
 ## What this project does
 
@@ -17,7 +17,7 @@ It uses the Million Song Dataset to build a content based recommender with featu
 - Supports multi seed recommendations by averaging seed embeddings into a user taste vector
 - Saves model artifacts to disk so recommendations work without retraining
 
-----------------------------------------------------------------------------------------
+
 
 ## Tech stack
 
@@ -29,7 +29,7 @@ It uses the Million Song Dataset to build a content based recommender with featu
 - NumPy and pandas
 - Docker / Docker Compose
 
-----------------------------------------------------------------------------------------
+
 
 ## Project structure
 
@@ -61,7 +61,7 @@ It uses the Million Song Dataset to build a content based recommender with featu
 └── README.md                  # Project documentation
 ```
 
-----------------------------------------------------------------------------------------
+
 
 ## Data model
 
@@ -85,7 +85,7 @@ It uses the Million Song Dataset to build a content based recommender with featu
 - `song_features.track_id` is the primary key and also a foreign key to `songs.track_id`
 - Cascading deletes remove features when a song is removed
 
-----------------------------------------------------------------------------------------
+
 
 ## Feature vector
 
@@ -106,7 +106,7 @@ The recommender uses a fixed feature order stored in `models/config.json` so tra
 
 Feature scaling is learned using StandardScaler and applied consistently during retrieval.
 
-----------------------------------------------------------------------------------------
+
 
 ## Recommendation approach
 
@@ -138,7 +138,7 @@ Feature scaling is learned using StandardScaler and applied consistently during 
 - Filters out seed songs and caps repeated artists
 - Returns up to `k` results with metadata from `songs`
 
-----------------------------------------------------------------------------------------
+
 
 ## API overview
 
@@ -168,7 +168,7 @@ Example:
 }
 ```
 
-----------------------------------------------------------------------------------------
+
 
 ## Running with Docker
 
@@ -189,7 +189,7 @@ docker compose up -d --build
 API is available at:
 http://localhost:8000/docs
 
-----------------------------------------------------------------------------------------
+
 
 ## Local environment variables
 
@@ -207,7 +207,7 @@ DATABASE_URL=postgresql+psycopg2://songrec:songrec_pw@localhost:5432/songrec
 
 Inside Docker Compose the API uses `db` as the hostname, and that is set in `docker-compose.yml`.
 
-----------------------------------------------------------------------------------------
+
 
 ## Building the catalog and index manually
 
@@ -237,7 +237,7 @@ python src/build_index.py
 
 After this, recommendations work immediately using the saved artifacts.
 
-----------------------------------------------------------------------------------------
+
 
 ## Quick verification
 
