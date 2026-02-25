@@ -38,6 +38,7 @@ Request body should be JSON with keys:
     - per_artist_cap: max number of recommendations per artist (optional, default=2)
 Response is a list of recommended tracks with metadata.
 """
+@app.get("/search")
 def search(q: str, limit: int = 20):
     q = (q or "").strip()
     if not q:
