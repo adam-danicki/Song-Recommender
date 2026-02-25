@@ -59,192 +59,155 @@ It uses the Million Song Dataset to build a content based recommender with featu
 ├── requirements.txt           # Python dependencies
 ├── .env                       # Local environment variables (DO NOT commit)
 └── README.md                  # Project documentation
-Data model
-Tables
 
-songs
+----------------------------------------------------------------------------------------
 
-track_id primary key
+## Data model
 
-title not null
+### Entities
 
-artist not null
+- **Song**
+  - `track_id`, `title`, `artist`, `year`, `release`
+  - optional derived fields like `genre` and tag arrays from the dataset
+- **SongFeature**
+  - belongs to a Song
+  - stores the numeric feature vector used for similarity search
 
-year nullable
+### Relationships
 
-release nullable
+- Song has one SongFeature
+- SongFeature references Song by `track_id`
 
-genre derived from top terms or tags
+### Integrity rules
 
-artist_terms_top text array
+- `songs.track_id` is the primary key and uniquely identifies a song
+- `song_features.track_id` is the primary key and also a foreign key to `songs.track_id`
+- Cascading deletes remove features when a song is removed
 
-artist_mbtags_top text array
+----------------------------------------------------------------------------------------
 
-song_features
+## Feature vector
 
-track_id primary key references songs(track_id) on delete cascade
+The recommender uses a fixed feature order stored in `models/config.json` so training time and recommendation time stay consistent.
 
-features double precision array used for similarity search
+Example feature order:
+- duration
+- tempo
+- loudness
+- key
+- mode
+- time_signature
+- danceability
+- energy
 
-Feature vector
+Feature scaling is learned using StandardScaler and applied consistently during retrieval.
 
-The recommender uses a fixed feature order stored in models/config.json.
+----------------------------------------------------------------------------------------
 
-duration
+## Recommendation approach
 
-tempo
+### Offline step build_index.py
 
-loudness
+- Loads all feature vectors from `song_features`
+- Fits a StandardScaler across the full catalog
+- Optionally fits PCA to produce compact embeddings
+- Normalizes embeddings for cosine similarity behavior
+- Fits a NearestNeighbors retriever using cosine distance
+- Saves artifacts to `models/` so the API can recommend without retraining
 
-key
+Artifacts saved to `models/`:
+- `scaler.pkl`
+- `pca.pkl` optional
+- `knn.pkl`
+- `track_ids.npy`
+- `embeddings.npy`
+- `config.json`
 
-mode
+### Online step recommender.py
 
-time_signature
+- User selects 1 to 20 `track_ids`
+- Fetches seed vectors from Postgres
+- Applies the same scaler and PCA pipeline as the offline index
+- Averages seed embeddings into a single taste vector
+- Queries kNN for nearest songs by cosine distance
+- Filters out seed songs and caps repeated artists
+- Returns up to `k` results with metadata from `songs`
 
-danceability
+----------------------------------------------------------------------------------------
 
-energy
+## API overview
 
-Feature scaling is learned using StandardScaler and applied consistently at recommendation time.
+OpenAPI Swagger UI:
+- `http://localhost:8000/docs`
 
-Recommendation approach
-Offline step (build_index.py)
+Core endpoints you can use right away:
 
-Loads all feature vectors from song_features
+### Health
+- `GET /health` returns a basic status response
 
-Fits a StandardScaler across the dataset
+### Search
+- `GET /search?q=jack&limit=20`  
+Returns matching songs from the catalog and includes `track_id` so the frontend can select songs.
 
-Optionally fits PCA to build compact embeddings
+### Recommend
+- `POST /recommend`
 
-L2 normalizes embeddings for cosine similarity
+Request body:
+- `track_ids` list of seed track ids, 1 to 20
+- `k` number of recommendations to return, default 20
+- `per_artist_cap` max number of recommendations per artist, default 2
 
-Fits a NearestNeighbors retriever using cosine distance
-
-Saves artifacts to models/ so the API can recommend without retraining
-
-Online step (recommender.py)
-
-User selects 1 to 20 track_ids
-
-Fetches seed vectors from Postgres
-
-Applies the same scaler and PCA as the index
-
-Averages seed embeddings into a user taste vector
-
-Queries kNN for nearest songs
-
-Filters out seed songs and caps repeated artists
-
-Returns the top 20 results with metadata from songs
-
-API Overview
-
-OpenAPI (Swagger UI)
-
-http://localhost:8000/docs
-
-Core endpoints you can use right away
-
-Health
-
-GET /health basic health check
-
-Search
-
-GET /search?q=jack&limit=20
-
-Returns matching songs from the catalog
-
-Includes track_id so the frontend can select songs
-
-Recommend
-
-POST /recommend
-
-track_ids list of selected songs (1 to 20)
-
-k number of recommendations, default 20
-
-per_artist_cap max number of recommendations per artist, default 2
-
-Example request body
-
+Example request body:
+```json
 {
   "track_ids": ["TRBIAHA128F42A4C9B", "TRBIACJ128F93087A9"],
   "k": 20,
   "per_artist_cap": 2
 }
-Running with Docker
-1) Download dependencies (local)
 
-Python 3.12+ installed and available
-To install Python dependencies
+----------------------------------------------------------------------------------------
 
+## Running with Docker
+
+### 1) Download dependencies local
+
+- Python 3.12+ installed and available
+
+```bash
 pip install -r requirements.txt
 
-2) Build + start services (Docker)
+### 2)Build and start services Docker
 
-From the repo root
-
+From the repo root:
+```bash
 docker compose up -d --build
 
-API is available at
+API is available at:
+- http://localhost:8000/docs
 
-http://localhost:8000/docs
+----------------------------------------------------------------------------------------
 
-Local environment variables
+## Local environment variables
 
 You will typically run extract.py, ingest.py, and build_index.py from your host machine. For that, .env should point to localhost.
 
-Example .env
-
+Example .env:
+```bash
 DATABASE_URL=postgresql+psycopg2://songrec:songrec_pw@localhost:5432/songrec
 
-Inside Docker Compose the API uses db as the hostname, and that is set in docker-compose.yml.
+Inside Docker Compose the API uses db as the hostname, and that is configured in docker-compose.yml.
 
-Building the catalog and index manually
+----------------------------------------------------------------------------------------
+
+## Building the catalog and index manually
 
 These steps are run manually when you refresh data or reset the DB.
 
-Step A) Extract MSD to CSV
+### Step A Extract MSD to CSV
 
 Reads MSD .h5 files and writes CSVs into data/.
-
+```bash
 python src/extract.py
 
-Outputs
 
-data/tracks.csv
 
-data/features.csv
-
-Step B) Ingest CSV into Postgres
-
-Runs schema.sql to create tables if needed, then inserts and upserts data.
-
-python src/ingest.py
-Step C) Build ML index artifacts
-
-Fits scaler, optional PCA, and kNN retrieval then saves artifacts into models/.
-
-python src/build_index.py
-
-After this, recommendations work immediately using the saved artifacts.
-
-Quick verification
-
-Check DB row counts
-
-docker compose exec -T db psql -U songrec -d songrec -c "SELECT COUNT(*) FROM songs; SELECT COUNT(*) FROM song_features;"
-
-Test search
-
-curl "http://localhost:8000/search?q=jack&limit=5"
-
-Test recommend
-
-curl -X POST "http://localhost:8000/recommend" \
-  -H "Content-Type: application/json" \
-  -d "{\"track_ids\":[\"TRBIAHA128F42A4C9B\"],\"k\":20,\"per_artist_cap\":2}"
