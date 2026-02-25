@@ -6,10 +6,8 @@ __pycache__/
 *.pyc
 
 # dataset + large files
-data/msd/
-*.h5
-*.tar.gz
-*.zip
+data/*
+!data/.gitkeep
 
 # generated artifacts
 models/*
