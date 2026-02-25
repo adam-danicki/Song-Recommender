@@ -10,6 +10,26 @@ services:
       - "5432:5432"
     volumes:
       - songrec_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U songrec -d songrec"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    
+  api:
+    build: .
+    container_name: songrec_api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://songrec:songrec_pw@db:5432/songrec
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./:/code
+      - ./models:/code/models
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
   songrec_pgdata:
