@@ -5,7 +5,7 @@ import joblib
 from sqlalchemy import text
 from sklearn.preprocessing import normalize
 
-from db import ENGINE
+from src.db import ENGINE
 
 ROOT  = Path(__file__).resolve().parents[1]
 MODELS_DIR = ROOT / "models"
