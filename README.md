@@ -222,9 +222,93 @@ Inside Docker Compose, the API connects to Postgres using the service hostname `
 That is already configured in `docker-compose.yml` via:
 `postgresql+psycopg2://songrec:songrec_pw@db:5432/songrec`
 
+
 ## Building the catalog and index manually
 
 ### Step 1) Put the MSD files in data/msd/
+Place the Million Song Dataset file/folder under:
+`data/`
+
+For example, if you’re using the MSD subset structure, you should have folders like:
+`data/msd/A`, `data/msd/B`, etc.
+- The dataset is not included in this repo. You must download it separately.
+
+### Step 2) Start Postgres (Docker)
+Start the database first:
+```bash
+docker compose up -d db
+```
+
+### Step 3) Install Python dependencies (host machine)
+```bash
+python -m venv .venv
+
+# Mac/Linux:
+source .venv/bin/activate
+# Windows PowerShell:
+# .\.venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
+```
+
+### Setp 4) Extract MSD -> CSV
+Reads MSD files and writes CSVs into `data/`.
+```bash
+python src/extract.py
+```
+
+Outputs:
+- `data/tracks.csv`
+- `data/features.csv`
+
+### Step 5) Ingest CSV -> Postgres
+Runs `schema.sql` to create tables if needed, then inserts/upserts data.
+```bash
+python src/ingest.py
+```
+
+### Step 6) Build ML index artifacts
+Fits scaler, optional PCA, and kNN retrieval then saves artifacts into `models/`.
+```bash
+python src/build_index.py
+```
+
+After this, recommendations work immediately using the saved artifacts in `models/`.
+
+### Step 7) Start the API (Docker)
+```bash
+docker compose up -d --build api
+```
+
+OpenAPI docs:
+http://localhost:8000/docs
+
+## Quick verification
+### Check DB row counts
+```bash
+docker compose exec -T db psql -U songrec -d songrec -c "SELECT COUNT(*) FROM songs; SELECT COUNT(*) FROM song_features;"
+```
+
+### Test search
+```bash
+curl "http://localhost:8000/search?q=jack&limit=5"
+```
+
+### Test recommend
+```bash
+curl -X POST "http://localhost:8000/recommend" \
+  -H "Content-Type: application/json" \
+  -d "{\"track_ids\":[\"TRBIAHA128F42A4C9B\"],\"k\":20,\"per_artist_cap\":2}"
+```
+
+## Resetting the database (optional)
+If you want a clean rebuild of Postgres data:
+
+```bash
+docker compose down -v
+docker compose up -d db
+```
+  
 
 
 
