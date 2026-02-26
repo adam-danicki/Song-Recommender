@@ -65,6 +65,9 @@ It uses the Million Song Dataset to build a content based recommender with featu
 ├── .gitignore                 # Ignores data + models contents
 └── README.md                  # Project documentation
 ```
+Notes:
+- The Million Song Dataset is not included in this repo. You must download it separately.
+- data/ and models/ are present on GitHub, but the dataset and generated artifacts are intentionally not committed.
 
 
 
@@ -175,17 +178,10 @@ Example:
 
 
 
-## Running with Docker
+## Running the API with Docker
 
-### 1) Download dependencies (local)
-- Python 3.12+ installed and available
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2) Build and start services (Docker)
-From the repo root:
+### After first-time setup (recommended)
+Once you have built the catalog + ML artifacts (see “Building the catalog and index manually” below), you can start the stack:
 
 ```bash
 docker compose up -d --build
@@ -193,6 +189,24 @@ docker compose up -d --build
 
 API is available at:
 http://localhost:8000/docs
+
+### First-time setup note
+If this is your first time running the project, you must:
+1. start Postgres
+2. run `extract.py` -> `ingest.py` -> `build_index.py`
+3. then start the API
+
+Otherwise the API will start, but recommendations will fail because the database and/or `models/` artifacts are missing.
+
+First-time setup (commands):
+```bash
+docker compose up -d db
+cp .env.example .env
+python src/extract.py
+python src/ingest.py
+python src/build_index.py
+docker compose up -d --build api
+```
 
 
 
@@ -202,7 +216,7 @@ http://localhost:8000/docs
 You will typically run `extract.py`, `ingest.py`, and `build_index.py` from your host machine.  
 Because these scripts run on your computer (not inside Docker), `DATABASE_URL` should use `localhost`:
 
-### 1) Copy the template:
+1) Copy the template:
 ```bash
 cp .env.example .env
 ```
@@ -212,7 +226,7 @@ Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-### 2. Your `.env` should look like:
+2) Your `.env` should look like:
 ```bash
 DATABASE_URL=postgresql+psycopg2://songrec:songrec_pw@localhost:5432/songrec
 ```
@@ -227,7 +241,7 @@ That is already configured in `docker-compose.yml` via:
 
 ### Step 1) Put the MSD files in data/msd/
 Place the Million Song Dataset file/folder under:
-`data/`
+`data/msd/`
 
 For example, if you’re using the MSD subset structure, you should have folders like:
 `data/msd/A`, `data/msd/B`, etc.
@@ -251,7 +265,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Setp 4) Extract MSD -> CSV
+### Step 4) Extract MSD -> CSV
 Reads MSD files and writes CSVs into `data/`.
 ```bash
 python src/extract.py
